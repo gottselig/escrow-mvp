@@ -8,7 +8,202 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Deal status matches Escrow.sol::EscrowTypes.DealStatus
+enum DealStatus {
+  Created     // 0
+  Accepted    // 1
+  Funded      // 2
+  InProgress  // 3
+  Disputed    // 4
+  Resolved    // 5
+  Completed   // 6
+  Cancelled   // 7
+}
+
+// Milestone status matches Escrow.sol::EscrowTypes.MilestoneStatus
+enum MilestoneStatus {
+  Pending     // 0
+  Submitted   // 1
+  Approved    // 2
+  Refunded    // 3
+}
+
+// Dispute resolution type
+enum DisputeResolutionType {
+  ToClient
+  ToContractor
+  Split
+}
+
+// Main Deal model - corresponds to Escrow.sol contract instance
 model Deal {
+  id                    String   @id @default(cuid())
+
+  // On-chain identity
+  escrowAddress         String   @unique // The deployed Escrow contract address
+  factoryAddress        String   // The EscrowFactory that created this escrow
+
+  // Parties
+  client                String   // Address of the client (deal creator)
+  contractor            String   // Address of the contractor
+  arbiter               String   // Address assigned to resolve disputes
+  treasury              String   // Treasury address for fee collection
+
+  // Token & amounts
+  token                 String   // ERC20 token address (or ETH marker)
+  totalAmount           String   @db.VarChar(255) // BigInt as string to preserve precision
+  fundedAmount          String   @db.VarChar(255) // Amount actually funded
+  releasedAmount        String   @db.VarChar(255) // Amount paid to contractor
+  feeBps                Int      // Fee basis points (e.g., 500 = 5%)
+
+  // Status
+  status                DealStatus @default(Created)
+
+  // Metadata
+  metadataURI           String?  // Link to off-chain deal metadata
+  disputeReasonURI      String?  // IPFS link to dispute reason (if exists)
+
+  // Relations
+  milestones            Milestone[]
+  disputes              Dispute[]
+  eventLogs             EventLog[]
+
+  // Blockchain metadata
+  createdBlockNumber    Int?     // Block when EscrowCreated event was emitted
+  createdTxHash         String?  // Transaction hash of escrow creation
+
+  // Timestamps
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+// Milestone model - corresponds to Escrow.sol::EscrowTypes.Milestone
+model Milestone {
+  id                    String   @id @default(cuid())
+
+  // Foreign key
+  dealId                String
+  deal                  Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  // Milestone identity
+  milestoneIndex        Int      // Index in the on-chain milestones array
+
+  // Amounts
+  amount                String   @db.VarChar(255) // Expected amount for this milestone
+  grossAmount           String?  @db.VarChar(255) // Amount after approval (including fee)
+  feeAmount             String?  @db.VarChar(255) // Fee collected from this milestone
+  netAmount             String?  @db.VarChar(255) // Amount contractor receives
+
+  // Deadline
+  deadline              DateTime // When this milestone should be completed
+
+  // Status
+  status                MilestoneStatus @default(Pending)
+
+  // Metadata
+  descriptionURI        String?  // IPFS link to milestone description
+  resultURI             String?  // IPFS link to submitted result
+
+  // Timestamps
+  submittedAt           DateTime? // When contractor submitted result
+  approvedAt            DateTime? // When client approved result
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([dealId])
+}
+
+// Dispute model - corresponds to dispute tracking
+model Dispute {
+  id                    String   @id @default(cuid())
+
+  // Foreign key
+  dealId                String
+  deal                  Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  // Dispute metadata
+  openedBy              String   // Address that opened the dispute
+  reasonURI             String?  // IPFS link to dispute reason
+
+  // Resolution
+  status                String   @default("Open") // Open, Resolved
+  resolutionType        DisputeResolutionType?
+  clientAmount          String?  @db.VarChar(255) // Amount resolved to client (if Split/ToClient)
+  contractorAmount      String?  @db.VarChar(255) // Amount resolved to contractor (if Split/ToContractor)
+
+  // Blockchain metadata
+  eventBlockNumber      Int?     // Block when DisputeOpened event was emitted
+  eventTxHash           String?  // Transaction hash
+  resolvedTxHash        String?  // Transaction hash when dispute was resolved
+
+  // Timestamps
+  openedAt              DateTime @default(now())
+  resolvedAt            DateTime?
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([dealId])
+}
+
+// Event log for audit trail - tracks all events from contracts
+model EventLog {
+  id                    String   @id @default(cuid())
+
+  // Foreign key
+  dealId                String
+  deal                  Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  // Event details
+  eventName             String   // e.g., "EscrowCreated", "DealFunded", "MilestoneApproved"
+  eventData             Json     @db.JsonB // Raw event data as JSON
+
+  // Blockchain metadata
+  blockNumber           Int
+  txHash                String
+  logIndex              Int      // Index of log in transaction
+
+  // Timestamp
+  createdAt             DateTime @default(now())
+
+  @@index([dealId])
+  @@index([eventName])
+  @@index([blockNumber])
+}
+
+// Off-chain JSON metadata referenced by on-chain URI fields.
+model MetadataRecord {
   id        String   @id @default(cuid())
-  // Add fields
+  type      String
+  data      Json     @db.JsonB
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type])
+}
+
+// Runtime configuration grouped by scope, e.g. "site" and "app".
+model AppSetting {
+  key       String   @id
+  data      Json     @db.JsonB
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CmsPage {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  title     String
+  content   String
+  access    String   @default("PUBLIC")
+  published Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([published])
+  @@index([access])
 }

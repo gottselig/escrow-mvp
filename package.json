@@ -2,11 +2,21 @@
   "name": "escrow-mvp",
   "version": "1.0.0",
   "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
   "scripts": {
     "install:all": "pnpm install",
     "build": "pnpm --recursive build",
     "dev": "pnpm --recursive dev",
-    "test": "pnpm --recursive test"
+    "test": "pnpm --recursive test",
+    "dev:frontend": "pnpm --filter frontend dev",
+    "dev:backend": "pnpm --filter backend dev",
+    "build:frontend": "pnpm --filter frontend build",
+    "build:backend": "pnpm --filter backend build",
+    "start": "./scripts/start.sh",
+    "stop": "./scripts/stop.sh"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

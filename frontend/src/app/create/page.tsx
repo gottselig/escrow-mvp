@@ -1,8 +1,9 @@
+import { CreateDealForm } from '@/components/CreateDealForm'
+
 export default function CreateDeal() {
   return (
-    <main>
-      <h1>Create New Deal</h1>
-      {/* Create deal form will go here */}
+    <main className="page-shell grid gap-8 py-8">
+      <CreateDealForm />
     </main>
   )
 }

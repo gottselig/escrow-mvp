@@ -1,8 +1,6 @@
-export default function Dispute({ params }: { params: { address: string } }) {
-  return (
-    <main>
-      <h1>Dispute for Deal {params.address}</h1>
-      {/* Dispute panel will go here */}
-    </main>
-  )
+import { redirect } from 'next/navigation'
+
+export default async function DisputeRedirect({ params }: { params: Promise<{ address: string }> }) {
+  const { address } = await params
+  redirect(`/deals/${address}`)
 }

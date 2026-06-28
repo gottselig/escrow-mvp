@@ -1,7 +1,7 @@
 'use client'
 
+import { ConnectButton } from '@rainbow-me/rainbowkit'
+
 export function ConnectWalletButton() {
-  return (
-    <button>Connect Wallet</button>
-  )
+  return <ConnectButton accountStatus="address" chainStatus="icon" showBalance={false} />
 }

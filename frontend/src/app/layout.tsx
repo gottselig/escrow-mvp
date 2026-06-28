@@ -1,9 +1,12 @@
 import type { Metadata } from 'next'
-import './globals.css'
+import '@rainbow-me/rainbowkit/styles.css'
+import '../styles/globals.css'
+import { Providers } from './providers'
+import { AppNav } from '@/components/AppNav'
 
 export const metadata: Metadata = {
   title: 'Escrow MVP',
-  description: 'Decentralized escrow platform',
+  description: 'Escrow deals with ETH or MosUSDC payments',
 }
 
 export default function RootLayout({
@@ -13,7 +16,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <Providers>
+          <AppNav />
+          {children}
+        </Providers>
+      </body>
     </html>
   )
 }

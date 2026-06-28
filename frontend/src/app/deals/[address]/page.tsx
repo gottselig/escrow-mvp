@@ -1,8 +1,10 @@
-export default function DealDetail({ params }: { params: { address: string } }) {
-  return (
-    <main>
-      <h1>Deal {params.address}</h1>
-      {/* Deal details will go here */}
-    </main>
-  )
+import { DealDetailClient } from './DealDetailClient'
+
+type DealDetailPageProps = {
+  params: Promise<{ address: string }>
+}
+
+export default async function DealDetailPage({ params }: DealDetailPageProps) {
+  const { address } = await params
+  return <DealDetailClient address={address} />
 }
